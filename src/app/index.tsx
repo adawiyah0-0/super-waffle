@@ -16,6 +16,7 @@ export default function HomeScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
   const [duration, setDuration] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const loadSessions = async () => {
@@ -38,18 +39,30 @@ export default function HomeScreen() {
   }, [sessions]);
 
   const handleAdd = () => {
-    if (!subject.trim() || !duration.trim()) return;
+    const trimmedSubject = subject.trim();
+    const durationNum = Number(duration);
+
+    if (!trimmedSubject) {
+      setErrorMessage('Please enter a subject.');
+      return;
+    }
+
+    if (!duration.trim() || isNaN(durationNum) || durationNum <= 0) {
+      setErrorMessage('Duration must be a number greater than 0 (in minutes).');
+      return;
+    }
 
     const newSession: Session = {
       id: Date.now().toString(),
-      subject: subject.trim(),
-      duration: Number(duration),
+      subject: trimmedSubject,
+      duration: durationNum,
       date: new Date().toISOString().split('T')[0],
     };
 
     setSessions([newSession, ...sessions]);
     setSubject('');
     setDuration('');
+    setErrorMessage('');
     setModalVisible(false);
   };
 
@@ -57,17 +70,23 @@ export default function HomeScreen() {
     <View style={styles.container}>
       <Text style={styles.header}>My Study Sessions</Text>
 
-      <FlatList
-        data={sessions}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text style={styles.subject}>{item.subject}</Text>
-            <Text style={styles.details}>{item.duration} min · {item.date}</Text>
-          </View>
-        )}
-      />
+      {sessions.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No sessions yet — tap + to add one</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={sessions}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <View style={styles.card}>
+              <Text style={styles.subject}>{item.subject}</Text>
+              <Text style={styles.details}>{item.duration} min · {item.date}</Text>
+            </View>
+          )}
+        />
+      )}
 
       <Pressable style={styles.addButton} onPress={() => setModalVisible(true)}>
         <Text style={styles.addButtonText}>+</Text>
@@ -92,8 +111,15 @@ export default function HomeScreen() {
               keyboardType="numeric"
             />
 
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
+
             <View style={styles.modalButtons}>
-              <Pressable style={styles.cancelButton} onPress={() => setModalVisible(false)}>
+              <Pressable
+                style={styles.cancelButton}
+                onPress={() => {
+                  setModalVisible(false);
+                  setErrorMessage('');
+                }}>
                 <Text style={styles.cancelButtonText}>Cancel</Text>
               </Pressable>
               <Pressable style={styles.saveButton} onPress={handleAdd}>
@@ -119,6 +145,8 @@ const styles = StyleSheet.create({
   },
   subject: { fontSize: 16, fontWeight: '600' },
   details: { fontSize: 14, color: '#666', marginTop: 4 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 100 },
+  emptyStateText: { fontSize: 16, color: '#999' },
   addButton: {
     position: 'absolute',
     bottom: 30,
@@ -152,6 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     fontSize: 16,
   },
+  errorText: { color: '#e53935', fontSize: 14, marginBottom: 8 },
   modalButtons: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 },
   cancelButton: { paddingVertical: 10, paddingHorizontal: 16 },
   cancelButtonText: { color: '#666', fontSize: 16 },
