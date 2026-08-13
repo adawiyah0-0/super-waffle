@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { View, Text, FlatList, StyleSheet, Pressable, Modal, TextInput } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Session = {
   id: string;
@@ -8,17 +9,33 @@ type Session = {
   date: string;
 };
 
-const initialSessions: Session[] = [
-  { id: '1', subject: 'Data Structures', duration: 45, date: '2026-08-10' },
-  { id: '2', subject: 'React Native', duration: 30, date: '2026-08-09' },
-  { id: '3', subject: 'Database Systems', duration: 60, date: '2026-08-08' },
-];
+const STORAGE_KEY = 'study-sessions';
 
 export default function HomeScreen() {
-  const [sessions, setSessions] = useState<Session[]>(initialSessions);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [subject, setSubject] = useState('');
   const [duration, setDuration] = useState('');
+
+  useEffect(() => {
+    const loadSessions = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          setSessions(JSON.parse(stored));
+        }
+      } catch (err) {
+        console.error('Failed to load sessions:', err);
+      }
+    };
+    loadSessions();
+  }, []);
+
+  useEffect(() => {
+    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)).catch((err) =>
+      console.error('Failed to save sessions:', err)
+    );
+  }, [sessions]);
 
   const handleAdd = () => {
     if (!subject.trim() || !duration.trim()) return;
